@@ -19,9 +19,17 @@ def update(dt):
     snake.update()
 
 
+def reset_game():
+    global snake, score, food, running
+    score = 0
+    snake = Snake()
+    food = Food()
+
+
 def game_over():
-    print("Game over")
-    exit(666)
+    global running, label_lose
+    pyglet.clock.unschedule(update)
+    running = False
 
 
 class Vector2D:
@@ -167,11 +175,32 @@ label_score = pyglet.text.Label('Score: ' + str(score),
                                 font_name='Times New Roman',
                                 font_size=22,
                                 x=0, y=window.height - 22)
-
+label_lose = pyglet.text.Label('Game over',
+                               color=(255, 0, 0, 255),
+                               font_name='Times New Roman',
+                               font_size=22,
+                               x=window.width // 2, y=window.height // 2,
+                               anchor_x='center', anchor_y='center')
+label_lose2 = pyglet.text.Label('Press ENTER to reset',
+                                color=(255, 0, 0, 255),
+                                font_name='Times New Roman',
+                                font_size=22,
+                                x=window.width // 2, y=window.height // 2 - 25,
+                                anchor_x='center', anchor_y='center')
+label_lose3 = pyglet.text.Label('Press ESC to exit',
+                                color=(255, 0, 0, 255),
+                                font_name='Times New Roman',
+                                font_size=22,
+                                x=window.width // 2, y=window.height // 2 - 50,
+                                anchor_x='center', anchor_y='center')
 batch = pyglet.graphics.Batch()
 background = pyglet.graphics.OrderedGroup(0)
 foreground = pyglet.graphics.OrderedGroup(1)
-snake_grid = pyglet.image.ImageGrid(pyglet.image.load('Graphics/Snake.png'), 4, 4)
+
+
+pyglet.resource.path = ['Graphics']
+pyglet.resource.reindex()
+snake_grid = pyglet.image.ImageGrid(pyglet.resource.image('Snake.png'), 4, 4)
 
 
 @window.event
@@ -180,24 +209,36 @@ def on_draw():
     snake.draw()
     label_score.text = 'Score: ' + str(score)
     label_score.draw()
+    if not running:
+        label_lose.draw()
+        label_lose2.draw()
+        label_lose3.draw()
 
 
 @window.event
 def on_key_press(symbol, modifiers):
-    if symbol == key.LEFT:
-        snake.change_dir(Vector2D(-1, 0))
-    elif symbol == key.UP:
-        snake.change_dir(Vector2D(0, 1))
-    elif symbol == key.RIGHT:
-        snake.change_dir(Vector2D(1, 0))
-    elif symbol == key.DOWN:
-        snake.change_dir(Vector2D(0, -1))
+    global running
+    if not running:
+        if symbol == key.ENTER:
+            reset_game()
+            pyglet.clock.schedule_interval(update, 0.2)
+            running = True
+    else:
+        if symbol == key.LEFT:
+            snake.change_dir(Vector2D(-1, 0))
+        elif symbol == key.UP:
+            snake.change_dir(Vector2D(0, 1))
+        elif symbol == key.RIGHT:
+            snake.change_dir(Vector2D(1, 0))
+        elif symbol == key.DOWN:
+            snake.change_dir(Vector2D(0, -1))
 
 
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 pyglet.clock.schedule_interval(update, 0.2)
+running = True
 background_images = []
 
 load_background()
