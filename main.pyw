@@ -139,6 +139,8 @@ class Snake:
             self.grow()
 
     def grow(self):
+        global score
+        score += 1
         self.ate_food = True
         copy = self.body[-1]
         self.body.insert(-1, copy)
@@ -159,18 +161,25 @@ window_width = grid_width * tile_size
 window_height = grid_height * tile_size
 title = "Snake"
 window = pyglet.window.Window(window_width, window_height, title)
+score = 0
+label_score = pyglet.text.Label('Score: ' + str(score),
+                                color=(0, 0, 0, 255),
+                                font_name='Times New Roman',
+                                font_size=22,
+                                x=0, y=window.height - 22)
 
 batch = pyglet.graphics.Batch()
 background = pyglet.graphics.OrderedGroup(0)
 foreground = pyglet.graphics.OrderedGroup(1)
-snake_pic = pyglet.image.load('Graphics/Snake.png')
-snake_grid = pyglet.image.ImageGrid(snake_pic, 4, 4)
+snake_grid = pyglet.image.ImageGrid(pyglet.image.load('Graphics/Snake.png'), 4, 4)
 
 
 @window.event
 def on_draw():
     window.clear()
     snake.draw()
+    label_score.text = 'Score: ' + str(score)
+    label_score.draw()
 
 
 @window.event
