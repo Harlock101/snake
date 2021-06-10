@@ -7,9 +7,12 @@ from pyglet.gl import *
 def load_background():
     for y in range(grid_height):
         for x in range(grid_width):
-            sprite = pyglet.sprite.Sprite(snake_grid[(0, 3)], x * tile_size, y * tile_size, batch=batch, group=back)
+            img = snake_grid[(0, 3)]
+            x_pos = x * tile_size
+            y_pos = y * tile_size
+            sprite = pyglet.sprite.Sprite(img, x_pos, y_pos, batch=batch, group=background)
             sprite.scale = tile_size / image_size
-            background.append(sprite)
+            background_images.append(sprite)
 
 
 def update(dt):
@@ -21,29 +24,47 @@ def game_over():
     exit(666)
 
 
-class FOOD:
+class Vector2D:
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other):
+        if self.x == other.x and self.y == other.y:
+            return True
+        return False
+
+    def __add__(self, other):
+        return Vector2D(self.x + other.x, self.y + other.y)
+
+    def __sub__(self, other):
+        return Vector2D(self.x - other.x, self.y - other.y)
+
+
+class Food:
     def __init__(self):
-        self.apple = pyglet.sprite.Sprite(snake_grid[(0, 2)], batch=batch, group=fore)
-        self.apple.scale = tile_size / image_size
-        self.x = 0
-        self.y = 0
+        self.img = pyglet.sprite.Sprite(snake_grid[(0, 2)], batch=batch, group=foreground)
+        self.img.scale = tile_size / image_size
+        self.position = Vector2D(0, 0)
         self.respawn()
 
     def respawn(self):
         while True:
-            self.x = random.randint(0, grid_width - 1)
-            self.y = random.randint(0, grid_height - 1)
-            if not snake.at_this_pos(self.x, self.y):
+            self.position.x = random.randint(0, grid_width - 1)
+            self.position.y = random.randint(0, grid_height - 1)
+            if not snake.at_this_pos(self.position):
                 break
-        self.apple.x = self.x * tile_size
-        self.apple.y = self.y * tile_size
+        self.img.x = self.position.x * tile_size
+        self.img.y = self.position.y * tile_size
 
 
-class SNAKE:
+class Snake:
     def __init__(self):
-        self.body = [(3, 0), (2, 0), (1, 0), (0, 0)]
-        self.direction = (1, 0)
-        self.new_direction = (1, 0)
+        self.body = [Vector2D(grid_width//2, grid_height//2),
+                     Vector2D(grid_width//2 - 1, grid_height//2),
+                     Vector2D(grid_width//2 - 2, grid_height//2)]
+        self.direction = Vector2D(1, 0)
+        self.new_direction = Vector2D(1, 0)
         self.ate_food = False
 
         self.head = {
@@ -60,7 +81,7 @@ class SNAKE:
             (-1, 0): snake_grid[(2, 3)],
         }
 
-        self.body_tail = {
+        self.body_part = {
             (0, 2): snake_grid[(0, 0)],
             (0, -2): snake_grid[(0, 0)],
             (2, 0): snake_grid[(0, 1)],
@@ -73,53 +94,47 @@ class SNAKE:
 
     def draw(self):
         images = []
-        for index, tail in enumerate(self.body):
+        for index, part in enumerate(self.body):
             if index == 0:
-                img = pyglet.sprite.Sprite(self.head[self.direction], tail[0] * tile_size, tail[1] * tile_size,
-                                           batch=batch, group=fore)
+                img = self.head[self.direction.x, self.direction.y]
             elif index == len(self.body) - 1:
-                tail_dir = (self.body[index-1][0] - tail[0], self.body[index-1][1] - tail[1])
-                if tail_dir == (0, 0):
-                    tail_dir = (self.body[index - 2][0] - self.body[index-1][0],
-                                self.body[index - 2][1] - self.body[index-1][1])
-                img = pyglet.sprite.Sprite(self.tail[tail_dir],
-                                           tail[0] * tile_size, tail[1] * tile_size, batch=batch, group=fore)
+                if self.ate_food:
+                    tail_dir = self.body[index - 2] - part
+                else:
+                    tail_dir = self.body[index - 1] - part
+                img = self.tail[tail_dir.x, tail_dir.y]
             else:
                 if self.ate_food and index == len(self.body) - 2:
                     continue
-                if tail[0] == self.body[index-1][0]:
-                    body_dir = (self.body[index - 1][0] - self.body[index + 1][0],
-                                self.body[index - 1][1] - self.body[index + 1][1])
+                if part.x == self.body[index-1].x:
+                    body_dir = self.body[index - 1] - self.body[index + 1]
                 else:
-                    body_dir = (self.body[index + 1][0] - self.body[index - 1][0],
-                                self.body[index + 1][1] - self.body[index - 1][1])
-                img = pyglet.sprite.Sprite(self.body_tail[body_dir], tail[0] * tile_size, tail[1] * tile_size,
-                                           batch=batch, group=fore)
-            img.scale = tile_size / image_size
-            images.append(img)
+                    body_dir = self.body[index + 1] - self.body[index - 1]
+                img = self.body_part[body_dir.x, body_dir.y]
+            sprite = pyglet.sprite.Sprite(img, part.x * tile_size, part.y * tile_size, batch=batch, group=foreground)
+            sprite.scale = tile_size / image_size
+            images.append(sprite)
         batch.draw()
 
     def update(self):
         self.ate_food = False
         self.direction = self.new_direction
-        x_pos = self.body[0][0] + self.direction[0]
-        y_pos = self.body[0][1] + self.direction[1]
-        self.body.insert(0, (x_pos, y_pos))
+        self.body.insert(0, self.body[0] + self.direction)
         del self.body[-1]
         self.check_collision()
 
     def change_dir(self, direct):
-        if self.direction[0] + direct[0] != 0 or self.direction[1] + direct[1] != 0:
+        if self.direction.x + direct.x != 0 or self.direction.x + direct.x != 0:
             self.new_direction = direct
 
     def check_collision(self):
-        if self.body[0][0] < 0 or self.body[0][0] > grid_width - 1 \
-                or self.body[0][1] < 0 or self.body[0][1] > grid_height - 1:
+        if self.body[0].x < 0 or self.body[0].x > grid_width - 1 \
+                or self.body[0].y < 0 or self.body[0].y > grid_height - 1:
             game_over()
         for part in self.body[1:]:
-            if part[0] == self.body[0][0] and part[1] == self.body[0][1]:
+            if part == self.body[0]:
                 game_over()
-        if self.body[0][0] == food.x and self.body[0][1] == food.y:
+        if self.body[0] == food.position:
             food.respawn()
             self.grow()
 
@@ -128,32 +143,28 @@ class SNAKE:
         copy = self.body[-1]
         self.body.insert(-1, copy)
 
-    def at_this_pos(self, x, y):
+    def at_this_pos(self, position):
         for part in self.body:
-            if part[0] == x and part[1] == y:
+            if part == position:
                 return True
         return False
 
 
 tile_size = 40
-grid_width = 20
-grid_height = 20
+grid_width = 15
+grid_height = 15
 image_size = 40
 
 window_width = grid_width * tile_size
 window_height = grid_height * tile_size
 title = "Snake"
-
 window = pyglet.window.Window(window_width, window_height, title)
+
 batch = pyglet.graphics.Batch()
-back = pyglet.graphics.OrderedGroup(0)
-fore = pyglet.graphics.OrderedGroup(1)
+background = pyglet.graphics.OrderedGroup(0)
+foreground = pyglet.graphics.OrderedGroup(1)
 snake_pic = pyglet.image.load('Graphics/Snake.png')
 snake_grid = pyglet.image.ImageGrid(snake_pic, 4, 4)
-background = []
-load_background()
-snake = SNAKE()
-food = FOOD()
 
 
 @window.event
@@ -165,17 +176,22 @@ def on_draw():
 @window.event
 def on_key_press(symbol, modifiers):
     if symbol == key.LEFT:
-        snake.change_dir((-1, 0))
+        snake.change_dir(Vector2D(-1, 0))
     elif symbol == key.UP:
-        snake.change_dir((0, 1))
+        snake.change_dir(Vector2D(0, 1))
     elif symbol == key.RIGHT:
-        snake.change_dir((1, 0))
+        snake.change_dir(Vector2D(1, 0))
     elif symbol == key.DOWN:
-        snake.change_dir((0, -1))
+        snake.change_dir(Vector2D(0, -1))
 
 
 glEnable(GL_BLEND)
 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
 pyglet.clock.schedule_interval(update, 0.2)
+background_images = []
+
+load_background()
+snake = Snake()
+food = Food()
 pyglet.app.run()
