@@ -135,10 +135,10 @@ class SNAKE:
         return False
 
 
-tile_size = 16
+tile_size = 40
 grid_width = 20
 grid_height = 20
-image_size = 16
+image_size = 40
 
 window_width = grid_width * tile_size
 window_height = grid_height * tile_size
