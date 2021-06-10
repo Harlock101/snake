@@ -196,11 +196,7 @@ label_lose3 = pyglet.text.Label('Press ESC to exit',
 batch = pyglet.graphics.Batch()
 background = pyglet.graphics.OrderedGroup(0)
 foreground = pyglet.graphics.OrderedGroup(1)
-
-
-pyglet.resource.path = ['Graphics']
-pyglet.resource.reindex()
-snake_grid = pyglet.image.ImageGrid(pyglet.resource.image('Snake.png'), 4, 4)
+snake_grid = pyglet.image.ImageGrid(pyglet.image.load('Graphics/Snake.png'), 4, 4)
 
 
 @window.event
