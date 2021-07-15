@@ -28,6 +28,7 @@ LABEL_PRESS_ESC = pyglet.text.Label('Press ESC to exit', color=(255, 0, 0, 255),
 BACKGROUND = pyglet.graphics.OrderedGroup(0)
 FOREGROUND = pyglet.graphics.OrderedGroup(1)
 SNAKE_IMG_GRID = pyglet.image.ImageGrid(pyglet.image.load('Graphics/Snake.png'), 4, 4)
+GAME_SPEED = 0.2
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -79,7 +80,7 @@ class Snake:
     body = []  # list of positions for each body part of snake
     images = []  # list of images for each body part of snake
     direction = Vector2D
-    new_direction = Vector2D
+    new_direction = []
     ate_food = bool
 
     def __init__(self):
@@ -140,7 +141,11 @@ class Snake:
 
     def update(self):
         self.ate_food = False
-        self.direction = self.new_direction  # changes direction based on input from player
+        if len(self.new_direction) != 0:
+            # check for opposite direction, e.g. if direction is LEFT then new direction can not be RIGHT
+            if self.direction.x + self.new_direction[0].x != 0 or self.direction.y + self.new_direction[0].y != 0:
+                self.direction = self.new_direction[0]  # changes direction based on input from player
+            del self.new_direction[0]  # deletes even if the input was wrong
         self.body.insert(0, self.body[0] + self.direction)  # insert new HEAD based on direction
         del self.body[-1]  # deletes last body part
         self.check_collision()
@@ -150,13 +155,17 @@ class Snake:
                      Vector2D(GRID_WIDTH // 2 - 1, GRID_HEIGHT // 2),
                      Vector2D(GRID_WIDTH // 2 - 2, GRID_HEIGHT // 2)]
         self.direction = Vector2D(1, 0)  # RIGHT
-        self.new_direction = Vector2D(1, 0)  # RIGHT
+        self.new_direction = []
         self.ate_food = False
 
     def change_dir(self, direct):
-        # check for opposite direction, e.g. if direction is LEFT then new direction can not be RIGHT
-        if self.direction.x + direct.x != 0 or self.direction.x + direct.x != 0:
-            self.new_direction = direct
+        # Only last 2 moves are in list, for quick rotation,
+        # e.g. Player hit LEFT and immediately RIGHT, then Snake do both moves,
+        # even if it is in the same update interval
+        if len(self.new_direction) == 2:
+            del self.new_direction[0]
+
+        self.new_direction.append(direct)
 
     def check_collision(self):
         # check if snake is out of grid
@@ -236,7 +245,7 @@ def main():
     glEnable(GL_BLEND)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 
-    pyglet.clock.schedule_interval(update, 0.2)
+    pyglet.clock.schedule_interval(update, GAME_SPEED)
     running = True
     pyglet.app.run()
 
@@ -276,7 +285,7 @@ def on_key_press(symbol, modifiers):
     if not running:
         if symbol == key.ENTER:  # player wants to play again
             reset_game()
-            pyglet.clock.schedule_interval(update, 0.2)
+            pyglet.clock.schedule_interval(update, GAME_SPEED)
             running = True
     else:
         if symbol == key.LEFT:
